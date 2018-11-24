@@ -1,0 +1,9 @@
+[package]
+name = "terminal_clock"
+version = "0.1.0"
+authors = ["Zhang <wszxl516@163.com>"]
+
+[dependencies]
+chrono = "0.4"
+signal = "0.6.0"
+nix = "0.11.0"
