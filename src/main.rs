@@ -1,7 +1,8 @@
 extern crate chrono;
 extern crate signal;
 extern crate nix;
-use std::{fmt, process, str, thread, time};
+use std::{fmt, process, str, thread, time, env};
+use std::collections::HashMap;
 use chrono::prelude::*;
 use nix::sys::signal::{SIGINT};
 use signal::trap::Trap;
@@ -187,6 +188,17 @@ macro_rules! exit {
 
 }
 
+fn str2hex(str_num: &str) -> u8{
+    let mut num:u8 = 0;
+        for i in 0..256 {
+        if str_num.cmp(&format!("{}", i).as_str()) == std::cmp::Ordering::Equal ||
+            str_num.cmp(&format!("{:x?}", i).as_str()) == std::cmp::Ordering::Equal ||
+            str_num.cmp(&format!("{:X?}", i).as_str()) == std::cmp::Ordering::Equal{
+            num = i as u8
+        }
+    }
+    return num
+}
 
 
 struct Color{
@@ -231,6 +243,12 @@ impl Color {
     }
     fn clone(&self) -> Color {
         Color::new(self.red, self.green, self.blue)
+    }
+
+    fn from_string(str_color: &str) -> Color{
+        let (r, gb): (&str, &str) = str_color.split_at(2);
+        let (g, b): (&str, &str) = gb.split_at(2);
+        Color::new(str2hex(r),str2hex(g),str2hex(b))
     }
 
 }
@@ -288,6 +306,33 @@ fn draw_string(color_fg: Color, color_bg: Color, mut x: i32, y: i32, string: &st
 }
 
 fn main(){
+    let args: Vec<String> = env::args().skip(1).collect();
+    let mut arguments = HashMap::new();
+    for arg in args{
+        let argument: Vec<&str> = arg.splitn(2 ,"=").collect();
+        if argument.len() < 2 {
+                return err!("Invalid argument '{}': Arguments must be of the form 'name=value'.", arg);
+            }
+
+            let name = argument[0].trim();
+            if name.is_empty() {
+                return err!("Invalid argument '{}': Name must not be empty.", arg);
+            }
+            if arguments.contains_key(name) {
+                return err!("Duplicate argument '{}'.", name);
+            }
+
+            let value = argument[1].trim_matches(|c: char| c.is_whitespace() || c == '"' || c == '\'');
+
+            arguments.insert(name.to_owned(), value.to_owned());
+    }
+
+    let mut color:Color = Color::new(255,0,0);
+    for name in arguments.keys(){
+        if name.to_string().cmp(&"color".to_string()) == std::cmp::Ordering::Equal{
+                color = Color::from_string(&arguments["color"].to_string());
+        }
+    }
     let trap = Trap::trap(&[SIGINT]);
     loop {
         if let Some(SIGINT) = trap.wait(time::Instant::now()) {
@@ -295,8 +340,8 @@ fn main(){
             process::exit(0)
         }
         let local: DateTime<Local> = Local::now();
-        let fg_color: Color = Color::new(0, 0, 255);
-        let bg_color: Color = Color::new(0, 0, 255);
+        let fg_color: Color = color.clone();
+        let bg_color: Color = Color::new(0, 0, 0);
         let sleep_time: time::Duration = time::Duration::new(1, 0);
         let s = draw_string(fg_color, bg_color,5,20,
                             &format!("{:02}:{:02}:{:02}", local.hour(), local.minute(), local.second()));
