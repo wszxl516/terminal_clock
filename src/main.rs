@@ -2,6 +2,7 @@ extern crate chrono;
 extern crate signal;
 extern crate nix;
 use std::{fmt, process, str, thread, time, env};
+use std::cmp::Ordering::Equal;
 use std::collections::HashMap;
 use chrono::prelude::*;
 use nix::sys::signal::{SIGINT};
@@ -13,13 +14,6 @@ const CLEAR: &str = "\x1b[2J";
 const CUR_HIDE: &str = "\x1b[?25l";
 const CUR_SHOW: &str = "\x1b[?25h";
 
-/*
-const COLORS: [&str; 8] = [
-        "Black", "Red",
-        "Green", "Yellow",
-        "Blue", "Magenta",
-        "Cyan", "White"];
-*/
 const ASC_BLANK: [&str; 9] = [
     "000000000",
     "000000000",
@@ -151,7 +145,14 @@ const COLON: [&str; 9] = [
     "000111000",
     "000000000"];
 
-/*fn get_named_color(color: &str, if_bg: bool, light: bool) -> String
+
+/*
+const COLORS: [&str; 8] = [
+        "Black", "Red",
+        "Green", "Yellow",
+        "Blue", "Magenta",
+        "Cyan", "White"];
+fn get_named_color(color: &str, if_bg: bool, light: bool) -> String
 {
 
     let mut color_no: u8 = 30;
@@ -191,15 +192,52 @@ macro_rules! exit {
 fn str2hex(str_num: &str) -> u8{
     let mut num:u8 = 0;
         for i in 0..256 {
-        if str_num.cmp(&format!("{}", i).as_str()) == std::cmp::Ordering::Equal ||
-            str_num.cmp(&format!("{:x?}", i).as_str()) == std::cmp::Ordering::Equal ||
-            str_num.cmp(&format!("{:X?}", i).as_str()) == std::cmp::Ordering::Equal{
+        if str_num.cmp(&format!("{}", i).as_str()) == Equal ||
+            str_num.cmp(&format!("{:x?}", i).as_str()) == Equal ||
+            str_num.cmp(&format!("{:X?}", i).as_str()) == Equal{
             num = i as u8
         }
     }
     return num
 }
 
+struct Arguments(HashMap<String, String>);
+impl Arguments
+{
+    fn parse(&self) -> Result<Arguments, &str> {
+        let args: Vec<String> = env::args().skip(1).collect();
+        let mut arguments: HashMap<String, String> = HashMap::new();
+        let help = "Usage:\n\t color=ff00ff or color=255000255.\n\t";
+        for arg in args {
+            let argument: Vec<&str> = arg.splitn(2, "=").collect();
+            let name = argument[0].trim();
+            if name.cmp(&"help") == Equal ||
+                name.cmp(&"--help") == Equal ||
+                name.cmp(&"-h") == Equal||
+                argument.len() < 2 ||
+                name.is_empty()||
+                arguments.contains_key(name){
+                return Err(help)
+
+            }
+            else {
+                let value = argument[1].trim_matches(|c: char| c.is_whitespace() || c == '"' || c == '\'');
+                arguments.insert(name.to_string(), value.to_string());
+            }
+
+        }
+        Ok(Arguments(arguments))
+    }
+    fn get_value(&self, key: &str) -> String{
+        let mut value:&str = "";
+        for name in self.0.keys(){
+            if self.0.contains_key(name){
+                    value = &self.0[key];
+                }
+            }
+            value.to_string()
+    }
+}
 
 struct Color{
     red: u8,
@@ -245,21 +283,27 @@ impl Color {
         Color::new(self.red, self.green, self.blue)
     }
 
-    fn from_string(str_color: &str) -> Color{
-        let (r, gb): (&str, &str) = str_color.split_at(2);
-        let (g, b): (&str, &str) = gb.split_at(2);
-        Color::new(str2hex(r),str2hex(g),str2hex(b))
+    fn from_string(mut str_color: &str) -> Result<Color, &str>{
+        if str_color.cmp(&"") == Equal{
+            str_color = "ff0088"
+        }
+        if str_color.len() == 6 {
+            let (r, gb): (&str, &str) = str_color.split_at(2);
+            let (g, b): (&str, &str) = gb.split_at(2);
+            Ok(Color::new(str2hex(r), str2hex(g), str2hex(b)))
+        }
+        else {
+            Err("Invalid Value: Color must be hex numbers of 6 bits.")
+        }
     }
 
 }
 
 
-fn cur_move(x: i32, y: i32) -> String {
-    format!("\x1b[{};{}H", x, y)
-}
+fn cur_move(x: i32, y: i32) -> String { format!("\x1b[{};{}H", x, y) }
 
 fn draw_pixel(color: Color, color1: Color) -> String{
-    let pixel1: &str = "\u{2585}";
+    let pixel1: &str = "\u{2587}";
     format!("{}{}{}{}{}{}", COLOR_FG, color.to_string(24), COLOR_BG, color1.to_string(24) , pixel1, COLOR_END)
 
 }
@@ -305,34 +349,12 @@ fn draw_string(color_fg: Color, color_bg: Color, mut x: i32, y: i32, string: &st
         sss
 }
 
+
 fn main(){
-    let args: Vec<String> = env::args().skip(1).collect();
-    let mut arguments = HashMap::new();
-    for arg in args{
-        let argument: Vec<&str> = arg.splitn(2 ,"=").collect();
-        if argument.len() < 2 {
-                return err!("Invalid argument '{}': Arguments must be of the form 'name=value'.", arg);
-            }
-
-            let name = argument[0].trim();
-            if name.is_empty() {
-                return err!("Invalid argument '{}': Name must not be empty.", arg);
-            }
-            if arguments.contains_key(name) {
-                return err!("Duplicate argument '{}'.", name);
-            }
-
-            let value = argument[1].trim_matches(|c: char| c.is_whitespace() || c == '"' || c == '\'');
-
-            arguments.insert(name.to_owned(), value.to_owned());
-    }
-
-    let mut color:Color = Color::new(255,0,0);
-    for name in arguments.keys(){
-        if name.to_string().cmp(&"color".to_string()) == std::cmp::Ordering::Equal{
-                color = Color::from_string(&arguments["color"].to_string());
-        }
-    }
+    let _args: HashMap<String, String> = HashMap::new();
+    let args = Arguments(_args).parse().unwrap_or_else(|error| { exit!("{}", error);});
+    let color_str = args.get_value("color");
+    let color = Color::from_string(&color_str).unwrap_or_else(|error| { exit!("{}", error);});
     let trap = Trap::trap(&[SIGINT]);
     loop {
         if let Some(SIGINT) = trap.wait(time::Instant::now()) {
