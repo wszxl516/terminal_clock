@@ -211,17 +211,18 @@ impl Arguments
         for arg in args {
             let argument: Vec<&str> = arg.splitn(2, "=").collect();
             let name = argument[0].trim();
+            let value = argument[1].trim_matches(|c: char| c.is_whitespace() || c == '"' || c == '\'');
             if name.cmp(&"help") == Equal ||
                 name.cmp(&"--help") == Equal ||
                 name.cmp(&"-h") == Equal||
                 argument.len() < 2 ||
                 name.is_empty()||
-                arguments.contains_key(name){
+                arguments.contains_key(name)||
+                value.is_empty(){
                 return Err(help)
 
             }
             else {
-                let value = argument[1].trim_matches(|c: char| c.is_whitespace() || c == '"' || c == '\'');
                 arguments.insert(name.to_string(), value.to_string());
             }
 
@@ -230,11 +231,9 @@ impl Arguments
     }
     fn get_value(&self, key: &str) -> String{
         let mut value:&str = "";
-        for name in self.0.keys(){
-            if self.0.contains_key(name){
+            if self.0.contains_key(key){
                     value = &self.0[key];
                 }
-            }
             value.to_string()
     }
 }
