@@ -72,8 +72,8 @@ const NUM_4: [&str; 9] = [
     "011000110",
     "011000110",
     "011000110",
+    "011000110",
     "011111110",
-    "000000110",
     "000000110",
     "000000110",
     "000000110",
@@ -201,13 +201,33 @@ fn str2hex(str_num: &str) -> u8{
     return num
 }
 
+fn str2num(str_num: &str) -> i32{
+    let mut num:i32 = 0;
+        for i in 0..256 {
+        if str_num.cmp(&format!("{}", i).as_str()) == Equal{
+            num =  i as i32
+        }
+    }
+    return num
+}
+
+fn is_number(s: String) -> bool{
+    for ss in s.as_bytes(){
+        if *ss > 57 || *ss < 48{
+            return false
+        }
+    }
+    true
+}
+
+
 struct Arguments(HashMap<String, String>);
 impl Arguments
 {
     fn parse(&self) -> Result<Arguments, &str> {
         let args: Vec<String> = env::args().skip(1).collect();
         let mut arguments: HashMap<String, String> = HashMap::new();
-        let help = "Usage:\n\t color=ff00ff or color=255000255.\n\t";
+        let help = "Usage:\n\tcolor=ff00ff or color=255000255.\n\tx=20 y=5";
         for arg in args {
             let argument: Vec<&str> = arg.splitn(2, "=").collect();
             let name = argument[0].trim();
@@ -230,7 +250,7 @@ impl Arguments
         Ok(Arguments(arguments))
     }
     fn get_value(&self, key: &str) -> String{
-        let mut value:&str = "";
+        let mut value:&str = " ";
             if self.0.contains_key(key){
                     value = &self.0[key];
                 }
@@ -283,7 +303,7 @@ impl Color {
     }
 
     fn from_string(mut str_color: &str) -> Result<Color, &str>{
-        if str_color.cmp(&"") == Equal{
+        if str_color.cmp(&" ") == Equal{
             str_color = "ff0088"
         }
         if str_color.len() == 6 {
@@ -349,11 +369,26 @@ fn draw_string(color_fg: Color, color_bg: Color, mut x: i32, y: i32, string: &st
 }
 
 
+fn get_start_point(args: Arguments) -> (i32, i32){
+    let x = args.get_value("x");
+    let y = args.get_value("y");
+    let s_x = args.get_value("x");
+    let s_y = args.get_value("y");
+    if is_number(x) && is_number(y){
+        let xx = str2num(&s_x);
+        let yy = str2num(&s_y);
+        return (xx, yy)
+    }
+    err!("x and y must be a number use default value (20, 5)!");
+    (20, 5)
+}
+
 fn main(){
     let _args: HashMap<String, String> = HashMap::new();
     let args = Arguments(_args).parse().unwrap_or_else(|error| { exit!("{}", error);});
     let color_str = args.get_value("color");
     let color = Color::from_string(&color_str).unwrap_or_else(|error| { exit!("{}", error);});
+    let (x, y): (i32, i32) = get_start_point(args);
     let trap = Trap::trap(&[SIGINT]);
     loop {
         if let Some(SIGINT) = trap.wait(time::Instant::now()) {
@@ -364,9 +399,9 @@ fn main(){
         let fg_color: Color = color.clone();
         let bg_color: Color = Color::new(0, 0, 0);
         let sleep_time: time::Duration = time::Duration::new(1, 0);
-        let s = draw_string(fg_color, bg_color,5,20,
+        let s = draw_string(fg_color, bg_color,x as i32, y as i32,
                             &format!("{:02}:{:02}:{:02}", local.hour(), local.minute(), local.second()));
-        print!("{}{}{}{}", CLEAR, CUR_HIDE, s, CUR_SHOW);
+        print!("{}{}{}", CUR_HIDE, s, CUR_SHOW);
         thread::sleep(sleep_time)
     }
 
