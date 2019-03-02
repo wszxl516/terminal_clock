@@ -328,19 +328,19 @@ fn draw_pixel(color: Color, color1: Color) -> String{
 
 fn draw_asc(color_fg: Color, color_bg: Color, asc: char, x: i32, y: i32) -> String{
        let pic = match asc {
-       '0' => NUM_0,
-       '1' => NUM_1,
-       '2' => NUM_2,
-       '3' => NUM_3,
-       '4' => NUM_4,
-       '5' => NUM_5,
-       '6' => NUM_6,
-       '7' => NUM_7,
-       '8' => NUM_8,
-       '9' => NUM_9,
-       ':' => COLON,
-        _  => ASC_BLANK
-   };
+               '0' => NUM_0,
+               '1' => NUM_1,
+               '2' => NUM_2,
+               '3' => NUM_3,
+               '4' => NUM_4,
+               '5' => NUM_5,
+               '6' => NUM_6,
+               '7' => NUM_7,
+               '8' => NUM_8,
+               '9' => NUM_9,
+               ':' => COLON,
+                _  => ASC_BLANK
+       };
     let mut str_all: String = "".to_string();
     for n in 0..pic.len() {
         let mut yy = y;
