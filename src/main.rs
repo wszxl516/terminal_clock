@@ -211,7 +211,7 @@ fn str2num(str_num: &str) -> i32{
     return num
 }
 
-fn is_number(s: String) -> bool{
+fn is_number(s: &String) -> bool{
     for ss in s.as_bytes(){
         if *ss > 57 || *ss < 48{
             return false
@@ -371,11 +371,9 @@ fn draw_string(color_fg: Color, color_bg: Color, mut x: i32, y: i32, string: &st
 fn get_start_point(args: Arguments) -> (i32, i32){
     let x = args.get_value("x");
     let y = args.get_value("y");
-    let s_x = args.get_value("x");
-    let s_y = args.get_value("y");
-    if is_number(x) && is_number(y){
-        let xx = str2num(&s_x);
-        let yy = str2num(&s_y);
+    if is_number(&x) && is_number(&y){
+        let xx = str2num(&x);
+        let yy = str2num(&y);
         return (xx, yy)
     }
     err!("x and y must be a number use default value (20, 5)!");
