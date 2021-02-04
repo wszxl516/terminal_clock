@@ -387,6 +387,7 @@ fn main(){
     let color = Color::from_string(&color_str).unwrap_or_else(|error| { exit!("{}", error);});
     let (x, y): (i32, i32) = get_start_point(args);
     let trap = Trap::trap(&[SIGINT]);
+    let sleep_time: time::Duration = time::Duration::from_millis(900);
     loop {
         if let Some(SIGINT) = trap.wait(time::Instant::now()) {
             print!("{}{}", CLEAR, CUR_SHOW);
@@ -395,7 +396,6 @@ fn main(){
         let local: DateTime<Local> = Local::now();
         let fg_color: Color = color.clone();
         let bg_color: Color = Color::new(0, 0, 0);
-        let sleep_time: time::Duration = time::Duration::new(1, 0);
         let s = draw_string(fg_color, bg_color,x as i32, y as i32,
                             &format!("{:02}:{:02}:{:02}", local.hour(), local.minute(), local.second()));
         print!("{}{}{}", CUR_HIDE, s, CUR_SHOW);
